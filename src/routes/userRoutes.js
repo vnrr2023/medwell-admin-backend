@@ -53,4 +53,31 @@ router.post("/addUser", upload.array("documents", 5), async (req, res) => {
   }
 });
 
+// ✅ Route to update isApproved status
+router.put("/approve/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isApproved } = req.body; // Expecting { isApproved: true } or { isApproved: false }
+
+    if (typeof isApproved !== "boolean") {
+      return res.status(400).json({ error: "Invalid isApproved value" });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      id,
+      { isApproved },
+      { new: true } // Return the updated document
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({ isApproved: user.isApproved });
+  } catch (error) {
+    console.error("Error updating isApproved:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 module.exports = router;
