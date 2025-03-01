@@ -1,9 +1,13 @@
 const express = require("express");
 const { put } = require("@vercel/blob"); // Import `put` function
+const multer = require("multer"); // Import multer
 const User = require("../models/User");
-const upload = require("../middleware/upload");
 
 const router = express.Router();
+
+// Configure Multer to store files in memory
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // 🔹 Get all users
 router.get("/getUser", async (req, res) => {
@@ -40,13 +44,13 @@ router.post("/addUser", upload.array("documents", 5), async (req, res) => {
     const uploadedDocuments = await Promise.all(
       req.files.map(async (file) => {
         const blob = await put(file.originalname, file.buffer, {
-          access: "public", // Public file access
-          token: process.env.BLOB_READ_WRITE_TOKEN,
+          access: "public", // Publicly accessible files
+          token: process.env.BLOB_READ_WRITE_TOKEN, // Token from env
         });
 
         return {
           name: file.originalname,
-          url: blob.url, // Store the public URL in MongoDB
+          url: blob.url, // Store this URL in MongoDB
         };
       })
     );
