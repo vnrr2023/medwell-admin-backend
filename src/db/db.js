@@ -1,17 +1,18 @@
+const postgres = require("postgres");
 require("dotenv").config();
-const mongoose = require("mongoose");
+
+const sql = postgres(process.env.DATABASE_URL, {
+  ssl: "require", // Ensures SSL is used for Supabase connections
+});
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    await sql`SELECT 1`; // Simple query to check connection
+    console.log("✅ PostgreSQL Connected");
   } catch (error) {
-    console.error(`❌ MongoDB Connection Failed: ${error.message}`);
+    console.error("❌ PostgreSQL Connection Failed:", error);
     process.exit(1);
   }
 };
 
-module.exports = connectDB;
+module.exports = { sql, connectDB };
