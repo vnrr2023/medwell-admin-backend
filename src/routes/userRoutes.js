@@ -1,18 +1,12 @@
 const express = require("express");
-const { put } = require("@vercel/blob"); // Import `put` function
-const multer = require("multer"); // Import multer
-const User = require("../models/User");
+const { sql} = require("../db/db");
 
 const router = express.Router();
 
-// Configure Multer to store files in memory
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
-// 🔹 Get all users
+// ✅ Get all users
 router.get("/getUser", async (req, res) => {
   try {
-    const users = await User.find();
+    const users = await sql`SELECT * FROM doctor_doctorprofile`;
     res.status(200).json({
       status: 200,
       message: "Users retrieved successfully",
@@ -27,113 +21,33 @@ router.get("/getUser", async (req, res) => {
   }
 });
 
-// 🔹 POST route for adding a user with file uploads
-router.post("/addUser", upload.array("documents", 5), async (req, res) => {
+// Update verification status
+router.put("/verify/:id", async (req, res) => {
+  const { id } = req.params;
+  const { verified } = req.body;
+
   try {
-    const { name, type, specialty, email, phone, age, experience, education, languages, certifications, publications, researchInterests, professionalMemberships, awards, isApproved } = req.body;
+      // Ensure verified is a boolean
+      if (typeof verified !== "boolean") {
+          return res.status(400).json({ message: "Invalid value for verified. Must be true or false." });
+      }
 
-    // ✅ Ensure files are uploaded
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({
-        status: 400,
-        message: "No documents uploaded",
-      });
-    }
+      // Update the verified column
+      const result = await sql`
+          UPDATE doctor_doctorprofile 
+          SET verified = ${verified}
+          WHERE id = ${id}
+          RETURNING *;
+      `;
 
-    // ✅ Upload files to Vercel Blob storage
-    const uploadedDocuments = await Promise.all(
-      req.files.map(async (file) => {
-        const blob = await put(file.originalname, file.buffer, {
-          access: "public", // Publicly accessible files
-          token: process.env.BLOB_READ_WRITE_TOKEN, // Token from env
-        });
+      if (result.count === 0) {
+          return res.status(404).json({ message: "User not found" });
+      }
 
-        return {
-          name: file.originalname,
-          url: blob.url, // Store this URL in MongoDB
-        };
-      })
-    );
-
-    // ✅ Create new user
-    const newUser = new User({
-      name,
-      type,
-      specialty,
-      email,
-      phone,
-      age,
-      experience,
-      education,
-      languages,
-      certifications,
-      publications,
-      researchInterests,
-      professionalMemberships,
-      awards,
-      isApproved,
-      documents: uploadedDocuments,
-    });
-
-    await newUser.save();
-    res.status(201).json({
-      status: 201,
-      message: "User added successfully",
-      data: newUser,
-    });
+      res.status(200).json({status: 200, message: "User verification status updated successfully", user: result[0] });
   } catch (error) {
-    console.error("Upload error:", error);
-    res.status(500).json({
-      status: 500,
-      message: "Internal Server Error",
-      error: error.message,
-    });
-  }
-});
-
-// 🔹 Approve user (update `isApproved`)
-router.put("/approve/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { isApproved } = req.body;
-
-    if (typeof isApproved !== "boolean") {
-      return res.status(400).json({
-        status: 400,
-        message: "Invalid isApproved value",
-        error: "isApproved should be a boolean (true/false)",
-      });
-    }
-
-    const user = await User.findByIdAndUpdate(
-      id,
-      { isApproved },
-      { new: true }
-    );
-
-    if (!user) {
-      return res.status(404).json({
-        status: 404,
-        message: "User not found",
-      });
-    }
-
-    res.status(200).json({
-      status: 200,
-      message: "User approval status updated",
-      data: {
-        id: user._id,
-        name: user.name,
-        isApproved: user.isApproved,
-      },
-    });
-  } catch (error) {
-    console.error("Error updating isApproved:", error);
-    res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-      error: error.message,
-    });
+      console.error("Error updating verification status:", error);
+      res.status(500).json({ message: "Internal server error" });
   }
 });
 
