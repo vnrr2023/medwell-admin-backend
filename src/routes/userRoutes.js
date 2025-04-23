@@ -51,8 +51,8 @@ router.put("/verify/:id", async (req, res) => {
   }
 });
 
-router.get('/checkserver', async (req, res) => {
-  res.status(200).json({ status: 200, message: "Server is up and running 🚀" });
-});
+// router.get('/checkserver', async (req, res) => {
+//   res.status(200).json({ status: 200, message: "Server is up and running 🚀" });
+// });
 
 module.exports = router;
